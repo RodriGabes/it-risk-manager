@@ -30,6 +30,21 @@ categorias={
     9:"ESTACAO DE TRABALHO"
 }
 
+tipo_status={
+    0:"CORRIGIDO",
+    1:"EM ABERTO",
+    2:"EM TRATAMENTO",
+    3:"RISCO ACEITO"
+}
+
+tipo_severidade={
+    0:"SEGURO",
+    1:"POUCO IMPORTANTE",
+    2:"IMPORTANTE",
+    3:"MUITO IMPORTANTE",
+    4:"CRITICO"
+}
+
 def config(n):
     clrScreen()
     print(f'''========
@@ -101,24 +116,254 @@ Por favor, digite o numero correspondente a categoria do ativo:
 [8] IMPRESSORA DE REDE
 [9] ESTACAO DE TRABALHO
 ============""")
-                categ=int(ask_input(" "))
-                bdados.add_ativo(hostnome,categ,sid,rid)
+                categ=int(ask_input(" ")[0])
+                novo_aid=bdados.add_ativo(hostnome,categ,sid,rid)
+                print(f"-> NOVO ATIVO [{hostnome}] COM ID [{novo_aid}] CADASTRADO COM SUCESSO!")
             except: return 1
-            pass
         elif n[1]=="v":
-            pass
+            clrScreen()
+            print("""============
+CADASTRAR VULNERABILIDADE
+============
+-> Para cancelar o cadastro e voltar para o menu, digite 'exit'
+-> Para continuar, digite em um unica linha, separado por ':', nesta ordem:
+[NOME DA VULNERABILIDADE]:[ID DO ATIVO]:[DESCRICAO]""")
+            u=ask_input(":")
+            if u[0]=="exit": return 0
+            try:
+                vnome=u[0]
+                aid=int(u[1])
+                vdesc=u[2]
+                clrScreen()
+                print(f"""============
+CLASSIFICACAO DE SEVERIDADE
+============
+[0] SEGURO
+[1] POUCO IMPORTANTE
+[2] IMPORTANTE
+[3] MUITO IMPORTANTE
+[4] CRITICO
+============
+Para continuar, digite o numero correspondente a SEVERIDADE da vulnerabilidade [{vnome}] do ativo [{aid}]""")
+                sev=int(ask_input(" ")[0])
+                clrScreen()
+                print(f"""============
+STATUS DA VULNERABILIDADE
+============
+[0] CORRIGIDO
+[1] EM ABERTO
+[2] EM TRATAMENTO
+[3] RISCO ACEITO
+============
+Para continuar, digite o numero correspondente ao STATUS da vulnerabilidade [{vnome}] do ativo [{aid}]""")
+                stat=int(ask_input(" ")[0])
+                novo_vid=bdados.add_vul(vnome, sev, aid, vdesc, stat)
+                print(f"-> NOVA VULNERABILIDADE [{vnome}] COM ID [{novo_vid}] CADASTRADA COM SUCESSO!")
+            except: return 1
         elif n[1]=="r":
-            pass
+            clrScreen()
+            print("""============
+CADASTRAR RESPONSAVEL
+============
+-> Para cancelar o cadastro e voltar para o menu, digite 'exit'
+-> Para continuar, digite em um unica linha o nome do responsavel:""")
+            u=ask_input(":")
+            if u[0]=="exit": return 0
+            # adicionar: pesquisa nominal
+            try:
+                novo_rid=bdados.add_resp(u[0])
+                print(f"-> NOVO RESPONSAVEL [{u[0]}] COM ID [{novo_rid}] CADASTRADO COM SUCESSO!")
+            except: return 1
         elif n[1]=="s":
-            pass
+            clrScreen()
+            print("""============
+CADASTRAR SETOR
+============
+-> Para cancelar o cadastro e voltar para o menu, digite 'exit'
+-> Para continuar, digite em um unica linha o nome do setor:""")
+            u=ask_input(":")
+            if u[0]=="exit": return 0
+            # adicionar: pesquisa nominal na tabela de setores
+            try:
+                novo_sid=bdados.add_setor(u[0])
+                print(f"-> NOVO SETOR [{u[0]}] COM ID [{novo_sid}] CADASTRADO COM SUCESSO!")
+            except: return 1
         else: return 3
     except (ValueError,TypeError,OverflowError): return 4
     except (IndexError): return 1
     except: return 1
+    return 0
+
+flags={
+    "v":"vulnerabilidades",
+    "r":"responsaveis",
+    "a":"ativos",
+    "s":"setores"
+}
+mods_perm={
+    "v":[1,2,3,4,5],
+    "r":[1],
+    "a":[1,6,7,8],
+    "s":[1]
+}
+mods={
+    "1a":"SET anome = ?",
+    "1v":"SET vnome = ?",
+    "1s":"SET snome = ?",
+    "1r":"SET rnome = ?",
+    "2v":"SET vstatus = ?",
+    "3v":"SET severidade = ?",
+    "4v":"SET ativo = ?",
+    "5v":"SET descricao = ?",
+    "6a":"SET responsavel = ?",
+    "7a":"SET setor = ?",
+    "8a":"SET categoria = ?"
+}
+def select(t,f,id): #wip
+    if f=="a": #wip
+        print(f"""ID""")
+    elif f=="v":
+        print(f"""-> [VULN] ID=[{t[0]}] NOME=[{t[1]}] SEVERIDADE=[{tipo_severidade[t[2]]}] ATIVO_ID=[{t[3]}] STATUS=[{tipo_status[int(t[4])]}]
+-> DESCRICAO=[{t[5]}]""")
+    elif f=="r": print(f"-> [RESP] ID=[{t[0]}] NOME=[{t[1]}]")
+    else: print(f"-> [SETR] ID=[{t[0]}] NOME=[{t[1]}]")
+    print("""============
+OPCOES
+============
+Digite 'exit' para voltar ao menu...
+Digite 'del' para deletar esta entidade...
+Digite 'mod' para modificar dados desta entidade...
+============""")
+    while True:
+        hh=ask_input(" ")
+        if hh[0]=="exit": return
+        elif hh[0]=="del":
+            deps=bdados.cont_dep(flags[f],id)
+            if len(deps)>0:
+                print(f"""============
+ATENCAO!
+============
+Esta entidade possui {len(deps)} dependencia(s). Ao deletar esta entidade, todas as suas dependencias seram deletadas tambem...
+Gostaria de deletar mesmo assim? (s/n)""")
+                resp=ask_input(" ")
+                if resp[0]=="s" or resp[0]=="S":
+                    try:
+                        bdados.deletar(flags[f],id,deps)
+                        print("Entidades deletada com sucesso!")
+                        break
+                    except: print("Nao foi possivel deletar esta entidade...")
+                else: print("Operacao abortada...")
+            else:
+                try:
+                    lvazia=[]
+                    bdados.deletar(flags[f],id,lvazia)
+                    print("Entidade deletada com sucesso!")
+                    break
+                except: print("Nao foi possivel deletar esta entidade...")
+        elif hh[0]=="mod":
+            clrScreen()
+            print(f"""=============
+MODIFICAR UMA ENTIDADE
+============
+[1] Para modificar o NOME de [{t[1]}]...""")
+            if f=="v":
+                print("""[2] Para modificar o STATUS da [VULNERABILIDADE]...
+[3] Para modificar a SEVERIDADE da [VULNERABILIDADE]...
+[4] Para modificar o ATIVO da [VULNERABILIDADE]...
+[5] Para modificar a DESCRICAO da [VULNERABILIDADE]...""")
+            elif f=="a":
+                print("""[6] Para modificar o RESPONSAVEL do [ATIVO]...
+[7] Para modificar o SETOR do [ATIVO]...
+[8] Para modificar a CATEGORIA do [ATIVO]...""")
+            while True:
+                k=ask_input(" ")
+                if k[0]=="exit": break
+                if int(k[0]) in mods_perm[f]:
+                    nov=""
+                    if k[0]=="2":
+                        print("""============
+STATUS DA VULNERABILIDADE
+============
+[0] CORRIGIDO
+[1] EM ABERTO
+[2] EM TRATAMENTO
+[3] RISCO ACEITO
+============""")
+                        while True:
+                            nvvul=ask_input(" ")
+                            if nvvul[0]=="exit": break
+                            try:
+                                if int(nvvul[0]) in [0,1,2,3]:
+                                    nov=nvvul[0]
+                                    break
+                                else: print("Por favor, digite um opcao valida...")
+                            except: print("Por favor, digite um opcao valida...")
+                    elif k[0]=="3":
+                        print("""============
+CLASSIFICACAO DE SEVERIDADE
+============
+[0] SEGURO
+[1] POUCO IMPORTANTE
+[2] IMPORTANTE
+[3] MUITO IMPORTANTE
+[4] CRITICO
+============""")
+                        while True:
+                            nvsev=ask_input(" ")
+                            if nvsev[0]=="exit":break
+                            try:
+                                if int(nvsev[0]) in [0,1,2,3,4]:
+                                    nov=int(nvsev[0])
+                                    break
+                                else: print("Por favor, digite um opcao valida...")
+                            except: print("Por favor, digite um opcao valida...")
+                    else:
+                        print("Por favor, digite o novo valor desejado:")
+                        k0=ask_input(":")
+                        if int(k[0]) in [4,6,7,8]:
+                            try:
+                                nov=int(k0[0])
+                            except: print("-> O novo valor para este ID deve ser um inteiro!")
+                        else: nov=k0[0]
+                    modkey=k[0]+f
+                    resp=bdados.atualizar(flags[f],id,mods[modkey],nov)
+                    if resp==1: print("-> Nao foi possivel atualizar os dados...")
+                    else: print("""-> Dados atualizados com sucesso!
+============
+Digite 'exit' para voltar ao menu...
+Digite 'del' para deletar esta entidade...
+Digite 'mod' para modificar dados desta entidade...
+============""")
+                    break
+                else: print("-> Por favor, digite uma opcao valida...")
+        else: print("-> Por favor, digite um comando valido...")
+    return
+
+def search_bd(n):
+    try:
+        flag=n[1]
+        tp=n[2]
+        if tp=="ls": # listagem / wip
+            clrScreen()
+            print("a")
+        elif tp=="id": # busca por id > select / concluido
+            termo=int(n[3])
+            r=bdados.busca_id(flags[flag],termo)
+            if r==None:
+                print(f"Nenhuma entidade com ID = [{termo}] encontrada na tabela [{flags[flag]}]!")
+            else:
+                clrScreen()
+                select(r,flag,r[0])
+        elif tp=="nm": # busca textual / wip
+            termo=n[3]
+            pass
+        else: return 1
+    except: return 1
+    return 0
 
 cmds={
     "add":add_to_bd,
-    "search":2,
+    "search":search_bd,
     "config":config,
     "help":helper,
     "exit":exitfunc
@@ -143,7 +388,7 @@ IT RISK MANAGER INTERFACE
 Banco de Dados ativo: {conf["bdatual"]}
 =========================
 Digite 'add [tipo]' para adicionar nova entidade por tipo;
-Digite 'search [id ou nome]' para buscar entidade por id ou nome;
+Digite 'search [tipo] [id/nm/ls]' para buscar entidades de um tipo por id ou nome;
 Digite 'config' para definir preferencias;
 Digite 'help [comando]' para obter ajuda; 
 Digite 'exit' para finalizar o programa.''')
@@ -160,5 +405,5 @@ Digite 'exit' para finalizar o programa.''')
         temp=ask_input(" ")
 
 
-bdados=bd.Database(conf['bdatual'])
+bdados=bd.Database(conf['bdatual']) ## como reiniciaizar outro bdados?
 while True: const_menu()
