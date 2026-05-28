@@ -1,41 +1,17 @@
 import sqlite3
 
 tipagem_id={
-        "responsaveis":"rid",
-        "setores":"sid",
-        "ativos":"aid",
-        "vulnerabilidades":"vid"
-    }
-
-class Ativo:
-    def __init__(self,a,b,c,d,e):
-        self.id=a
-        self.nome=b
-        self.tabela="ativos"
-        self.setor=c
-        self.respons=d
-        self.categ=e
-
-class Responsavel:
-    def __init__(self,a,b):
-        self.id=a
-        self.nome=b
-        self.tabela="responsaveis"
-
-class Setor:
-    def __init__(self,a,b):
-        self.id=a
-        self.nome=b
-        self.tabela="setores"
-
-class Vulnerabilidade:
-    def __init__(self,a,b,c,d,e):
-        self.id=a
-        self.nome=b
-        self.tabela="vulnerabilidades"
-        self.desc=c
-        self.sev=d
-        self.stat=e
+    "responsaveis":"rid",
+    "setores":"sid",
+    "ativos":"aid",
+    "vulnerabilidades":"vid"
+}
+tipagem_nome={
+    "responsaveis":"rnome",
+    "setores":"snome",
+    "ativos":"anome",
+    "vulnerabilidades":"vnome"
+}
 
 class Database:
     def conectar(self):
@@ -135,10 +111,18 @@ CREATE TABLE IF NOT EXISTS vulnerabilidades (
         conexao = self.conectar()
         cursor = conexao.cursor()
         cursor.execute(f"SELECT * FROM {tabela}")
-        resultados = cursor.fetchall()
+        r = cursor.fetchall()
         conexao.close()
-        return resultados
+        return r
     
+    def busca_vuln(self,id):
+        conexao = self.conectar()
+        cursor = conexao.cursor()
+        cursor.execute(f"SELECT * FROM vulnerabilidades WHERE ativo = ?",(id,))
+        r = cursor.fetchall()
+        conexao.close()
+        return r
+
     def busca_id(self,tabela,a):
         conexao = self.conectar()
         cursor = conexao.cursor()
@@ -192,14 +176,10 @@ CREATE TABLE IF NOT EXISTS vulnerabilidades (
             return 0
         except: return 1
 
-    def busca_nome(self): #
+    def busca_nome(self,tabela,termo): 
         conexao = self.conectar()
         cursor = conexao.cursor()
-
-        cursor.execute("SELECT * FROM usuarios")
-
-        usuarios = cursor.fetchall()
-
+        cursor.execute(f"SELECT * FROM {tabela} WHERE {tipagem_nome[tabela]} = ?",(termo,))
+        r = cursor.fetchall()
         conexao.close()
-
-        return usuarios
+        return r
