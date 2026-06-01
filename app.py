@@ -1,20 +1,13 @@
+##################################
+# IT RISK MANAGER
+# by RodriGabes
+# updated: 2026-06-28
+##################################
 import itrm_helper
 import os
 import bd
 import time
-
-def exitfunc(n): #funcao de saida
-    exit()
-
-def clrScreen():
-    try: os.system("cls")
-    except: os.system("clear")
-
-def ask_input(s): # funcao para a entrada de linha
-    temp=input(">")
-    n=temp.split(s)
-    return n
-
+#USEFUL DICTIONARIES
 conf={
     "bdatual":"mydata.db",
     "numlista":5
@@ -42,7 +35,49 @@ tipo_severidade={
     3:"MUITO IMPORTANTE",
     4:"CRITICO"
 }
-def config(n):
+#UTILITY FUNCTIONS
+def cache_pref(a,b,c): #Saves and reads preferences into .config file
+    if a==0: #read preferences
+        try:
+            with open("app.config",'r') as f:
+                r=f.readline()
+                r=r.split(":")
+                if b==0:conf.update({"bdatual":r[0]})
+                else:conf.update({"numlista":int(r[1])})
+        except:
+            f=open("app.config","x")
+            f.close()
+            with open("app.config",'w') as f:
+                f.write("mydata.db:5")
+                if b==0:conf.update({"bdatual":"mydata.db"})
+                else:conf.update({"numlista":5})
+    else: #write preferences
+        ns=""
+        if b==0:
+            ns=c+":"+str(conf["numlista"])
+            conf.update({"bdatual":c})
+        else:
+            ns=conf["numlista"]+":"+str(c)
+            conf.update({"numlista":c})
+        try:
+            with open("app.config",'w') as f:
+                f.write(ns)
+        except:
+            f=open("app.config","x")
+            f.close()
+            with open("app.config",'w') as f:
+                f.write(ns)
+def exitfunc(n): #Quits program
+    exit()
+def clrScreen(): #Clears terminal
+    try: os.system("cls")
+    except: os.system("clear")
+def ask_input(s): #User input/Returns list
+    temp=input(">")
+    n=temp.split(s)
+    return n
+#MENUS AND METHODS
+def config(n): #Configurations Menu
     clrScreen()
     print(f'''========
 SETTINGS
@@ -56,37 +91,38 @@ Digite 'exit' para voltar ao menu.''')
     while True:
         u=ask_input(" ")
         try:
-            if u[0]=="set":
-                if u[1]=="db":
-                    tempdb=u[2]
-                    if ".db" not in u[2]:
+            if u[0].lower()=="set":
+                if u[1].lower()=="db":
+                    tempdb=u[2].lower()
+                    if ".db" not in tempdb:
                         tempdb=tempdb+".db"
-                    conf.update({"bdatual":tempdb})
+                    cache_pref(1,0,tempdb)
                     print(f"Banco de Dados Atual atualizado para {conf['bdatual']}")
-                elif u[1]=="num":
+                    print("!!! REINICIE O PROGRAMA PARA ATUALIZAR O BANCO DE DADOS !!!")
+                    exitfunc([])
+                elif u[1].lower()=="num":
                     tempnum=int(u[2])
                     if tempnum>0:
-                        conf.update({"numlista":tempnum})
+                        cache_pref(1,1,tempnum)
                         print(f"Numero de Resultados por Pagina atualizado para {conf['numlista']}")
                     else: print("Por favor, digite um numero maior que 0...")
                 else: print("Por favor, digite um argumento valido...")
-            elif u[0]=="exit": break
+            elif u[0].lower()=="exit": break
             else: print("Por favor, digite um comando valido...")
         except IndexError: print("Nao houveram argumentos suficientes para a sua operacao. Tente novamente...")
         except (ValueError,TypeError,OverflowError): print("O valor digitado nao corresponde a um inteiro ou possui valor invalido...")
     return -1
-
-def helper(n):
+def helper(n): #Display help about commands
     try:
-        if n[1] in list(itrm_helper.d.keys()):
+        if n[1].lower() in list(itrm_helper.d.keys()):
                 clrScreen()
                 print(itrm_helper.d[n[1]])
                 return 0
         else: return 2
     except: return 1
-
-def add_to_bd(n):
+def add_to_bd(n): #Adds entities into the database
     try:
+        n[1]=n[1].lower()
         if n[1]=="a":
             clrScreen()
             print("""============
@@ -157,7 +193,7 @@ Para continuar, digite o numero correspondente ao STATUS da vulnerabilidade [{vn
                 novo_vid=bdados.add_vul(vnome, sev, aid, vdesc, stat)
                 print(f"-> NOVA VULNERABILIDADE [{vnome}] COM ID [{novo_vid}] CADASTRADA COM SUCESSO!")
             except: return 1
-        elif n[1]=="r":
+        elif n[1]=="r": ###
             clrScreen()
             print("""============
 CADASTRAR RESPONSAVEL
@@ -165,12 +201,15 @@ CADASTRAR RESPONSAVEL
 -> Para cancelar o cadastro e voltar para o menu, digite 'exit'
 -> Para continuar, digite em um unica linha o nome do responsavel:""")
             u=ask_input(":")
-            if u[0]=="exit": return 0
-            # adicionar: pesquisa nominal para recusa de abertura identica
+            if u[0].lower()=="exit": return 0
+            l=bdados.busca_nome("responsaveis",u[0],0)
+            if len(l)!=0: return 5
             try:
                 novo_rid=bdados.add_resp(u[0])
                 print(f"-> NOVO RESPONSAVEL [{u[0]}] COM ID [{novo_rid}] CADASTRADO COM SUCESSO!")
-            except: return 1
+            except Exception as erro: #
+                print(erro)
+                return 1
         elif n[1]=="s":
             clrScreen()
             print("""============
@@ -179,8 +218,9 @@ CADASTRAR SETOR
 -> Para cancelar o cadastro e voltar para o menu, digite 'exit'
 -> Para continuar, digite em um unica linha o nome do setor:""")
             u=ask_input(":")
-            if u[0]=="exit": return 0
-            # adicionar: pesquisa nominal na tabela de setores para recusa de abertura identica
+            if u[0].lower()=="exit": return 0
+            l=bdados.busca_nome("setores",u[0],0)
+            if len(l)!=0: return 5
             try:
                 novo_sid=bdados.add_setor(u[0])
                 print(f"-> NOVO SETOR [{u[0]}] COM ID [{novo_sid}] CADASTRADO COM SUCESSO!")
@@ -388,7 +428,7 @@ def search_bd(n):
                 if ii==-1: normal=-1
         elif tp=="nm": # busca textual / concluido
             termo=n[3]
-            retorno=bdados.busca_nome(flags[flag],termo)
+            retorno=bdados.busca_nome(flags[flag],termo,1)
         elif tp=="ls": # fetching da lista / concluido
             retorno=bdados.busca_lista(flags[flag])
         else: return 1
@@ -443,7 +483,7 @@ Use o comando 'help [comando] para verificar a sintaxe correta...""",
     2:"O comando que esta tentando verificar nao existe...",
     3:"A flag digitada nao e valida! As flags possiveis sao [r,v,s,a]...",
     4:"O ID digitado nao corresponde a um numero inteiro ou e invalido...",
-    5:"a"
+    5:"Ja existe uma entidade com este mesmo nome nesta tabela..."
 }
 
 def const_menu():
@@ -469,6 +509,7 @@ Digite 'exit' para finalizar o programa.''')
     else:
         print("Nao foi possivel identificar um comando, por favor digite [ENTER] e tente novamente...")
         temp=ask_input(" ")
-
-bdados=bd.Database(conf['bdatual']) ## como reiniciaizar outro bdados?
-while True: const_menu()
+cache_pref(0,0,0) #Updates conf dictionary to saved preferences
+cache_pref(0,1,0)
+bdados=bd.Database(conf['bdatual']) #Instantiate module DB commands and links it to .db file
+while True: const_menu() #Calls menu method
