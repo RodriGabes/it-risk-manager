@@ -1,50 +1,23 @@
 import sqlite3
-
 tipagem_id={
-        "responsaveis":"rid",
-        "setores":"sid",
-        "ativos":"aid",
-        "vulnerabilidades":"vid"
-    }
-
-class Ativo:
-    def __init__(self,a,b,c,d,e):
-        self.id=a
-        self.nome=b
-        self.tabela="ativos"
-        self.setor=c
-        self.respons=d
-        self.categ=e
-
-class Responsavel:
-    def __init__(self,a,b):
-        self.id=a
-        self.nome=b
-        self.tabela="responsaveis"
-
-class Setor:
-    def __init__(self,a,b):
-        self.id=a
-        self.nome=b
-        self.tabela="setores"
-
-class Vulnerabilidade:
-    def __init__(self,a,b,c,d,e):
-        self.id=a
-        self.nome=b
-        self.tabela="vulnerabilidades"
-        self.desc=c
-        self.sev=d
-        self.stat=e
+    "responsaveis":"rid",
+    "setores":"sid",
+    "ativos":"aid",
+    "vulnerabilidades":"vid"
+}
+tipagem_nome={
+    "responsaveis":"rnome",
+    "setores":"snome",
+    "ativos":"anome",
+    "vulnerabilidades":"vnome"
+}
 
 class Database:
-    def conectar(self):
+    def conectar(self): #Opens connection to database
         return sqlite3.connect(self.nome_banco)
-
-    def criar_tabelas(self):
+    def criar_tabelas(self): #Creates tables if inexistent
         conexao = self.conectar()
         cursor = conexao.cursor()
-
         cursor.execute("""
 CREATE TABLE IF NOT EXISTS responsaveis (
     rid INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,12 +53,10 @@ CREATE TABLE IF NOT EXISTS vulnerabilidades (
 );""")
         conexao.commit()
         conexao.close()
-
-    def __init__(self, n):
+    def __init__(self, n): #Defines DB name property
         self.nome_banco = n
         self.criar_tabelas()
-
-    def add_ativo(self, nom, categ, setor, respons):
+    def add_ativo(self, nom, categ, setor, respons): #Adds new entries to ativos table
         conexao = self.conectar()
         cursor = conexao.cursor()
         cursor.execute("""INSERT INTO ativos (anome, setor, categoria, responsavel) VALUES (?, ?, ?, ?)""", (nom, setor, categ, respons,))
@@ -93,8 +64,7 @@ CREATE TABLE IF NOT EXISTS vulnerabilidades (
         lastid=cursor.lastrowid
         conexao.close()
         return lastid
-
-    def add_setor(self, nom):
+    def add_setor(self, nom): #Adds new entries to setores table
         conexao = self.conectar()
         cursor = conexao.cursor()
         cursor.execute("INSERT INTO setores (snome) VALUES (?)",(nom,))
@@ -102,8 +72,7 @@ CREATE TABLE IF NOT EXISTS vulnerabilidades (
         lastid=cursor.lastrowid
         conexao.close()
         return lastid
-
-    def add_resp(self, nom):
+    def add_resp(self, nom): #Adds new entries to responsaveis table
         conexao = self.conectar()
         cursor = conexao.cursor()
         cursor.execute("INSERT INTO responsaveis (rnome) VALUES (?)",(nom,))
@@ -111,8 +80,7 @@ CREATE TABLE IF NOT EXISTS vulnerabilidades (
         lastid=cursor.lastrowid
         conexao.close()
         return lastid
-
-    def add_vul(self,nom,sev,atv,des,vstat):
+    def add_vul(self,nom,sev,atv,des,vstat): #Adds new entries to vulnerabilidades table
         conexao = self.conectar()
         cursor = conexao.cursor()
         cursor.execute("INSERT INTO vulnerabilidades (vnome,severidade,ativo,descricao,vstatus) VALUES (?,?,?,?,?)",(nom,sev,atv,des,vstat,))
@@ -120,8 +88,7 @@ CREATE TABLE IF NOT EXISTS vulnerabilidades (
         lastid=cursor.lastrowid
         conexao.close()
         return lastid
-
-    def deletar(self,tabela,id,deps):
+    def deletar(self,tabela,id,deps): #Deletes an entry + dependencies from its table
         conexao = self.conectar()
         cursor = conexao.cursor()
         if len(deps)>0:
@@ -130,24 +97,28 @@ CREATE TABLE IF NOT EXISTS vulnerabilidades (
         cursor.execute(f"DELETE FROM {tabela} WHERE {tipagem_id[tabela]} = ?",(id,))
         conexao.commit()
         conexao.close()
-
-    def busca_lista(self,tabela):
+    def busca_lista(self,tabela): #Returns a list from all entries in a table
         conexao = self.conectar()
         cursor = conexao.cursor()
         cursor.execute(f"SELECT * FROM {tabela}")
-        resultados = cursor.fetchall()
+        r = cursor.fetchall()
         conexao.close()
-        return resultados
-    
-    def busca_id(self,tabela,a):
+        return r
+    def busca_vuln(self,id): #Returns a list os all vulnerabilities linkted to an item
+        conexao = self.conectar()
+        cursor = conexao.cursor()
+        cursor.execute(f"SELECT * FROM vulnerabilidades WHERE ativo = ?",(id,))
+        r = cursor.fetchall()
+        conexao.close()
+        return r
+    def busca_id(self,tabela,a): #Returns an entity based on ID and table
         conexao = self.conectar()
         cursor = conexao.cursor()
         cursor.execute(f"SELECT * FROM {tabela} WHERE {tipagem_id[tabela]} = ?", (a,))
-        resultado = cursor.fetchone()
+        r = cursor.fetchone()
         conexao.close()
-        return resultado
-    
-    def cont_dep(self,tabela,id):
+        return r
+    def cont_dep(self,tabela,id): #Returns a list of entities linked to another based on ID and table
         conexao = self.conectar()
         cursor = conexao.cursor()
         g=[]
@@ -181,8 +152,7 @@ CREATE TABLE IF NOT EXISTS vulnerabilidades (
                 g.append(gg)
         conexao.close()
         return g
-
-    def atualizar(self,tabela,id,comm,nov):
+    def atualizar(self,tabela,id,comm,nov): #Updates data of an entity
         try:
             conexao = self.conectar()
             cursor = conexao.cursor()
@@ -191,15 +161,16 @@ CREATE TABLE IF NOT EXISTS vulnerabilidades (
             conexao.close()
             return 0
         except: return 1
-
-    def busca_nome(self): #
+    def busca_nome(self,tabela,termo,a): #Fetches entries by name
         conexao = self.conectar()
         cursor = conexao.cursor()
-
-        cursor.execute("SELECT * FROM usuarios")
-
-        usuarios = cursor.fetchall()
-
-        conexao.close()
-
-        return usuarios
+        if a==0:
+            cursor.execute(f"SELECT * FROM {tabela} WHERE {tipagem_nome[tabela]} = ?",(termo,)) #Exact search
+            r = cursor.fetchone()
+            conexao.close()
+            return r
+        else:
+            cursor.execute(f"SELECT * FROM {tabela} WHERE {tipagem_nome[tabela]} LIKE ?",(f"%{termo}%",)) #Like search
+            r = cursor.fetchall()
+            conexao.close()
+            return r
