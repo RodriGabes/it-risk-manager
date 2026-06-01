@@ -1,12 +1,11 @@
 ##################################
 # IT RISK MANAGER
 # by RodriGabes
-# updated: 2026-06-28
+# updated: 2026-06-01
 ##################################
 import itrm_helper
 import os
 import bd
-import time
 #USEFUL DICTIONARIES
 conf={
     "bdatual":"mydata.db",
@@ -132,7 +131,7 @@ CADASTRAR ATIVO
 -> Para continuar, digite em um unica linha, separado por ':', nesta ordem:
 [NOME OU HOSTNAME]:[ID DO SETOR]:[ID DO RESPONSAVEL]""")
             u=ask_input(":")
-            if u[0]=="exit": return 0
+            if u[0]=="exit": return -1
             try:
                 hostnome=u[0]
                 sid=int(u[1])
@@ -162,7 +161,7 @@ CADASTRAR VULNERABILIDADE
 -> Para continuar, digite em um unica linha, separado por ':', nesta ordem:
 [NOME DA VULNERABILIDADE]:[ID DO ATIVO]:[DESCRICAO]""")
             u=ask_input(":")
-            if u[0]=="exit": return 0
+            if u[0]=="exit": return -1
             try:
                 vnome=u[0]
                 aid=int(u[1])
@@ -193,7 +192,7 @@ Para continuar, digite o numero correspondente ao STATUS da vulnerabilidade [{vn
                 novo_vid=bdados.add_vul(vnome, sev, aid, vdesc, stat)
                 print(f"-> NOVA VULNERABILIDADE [{vnome}] COM ID [{novo_vid}] CADASTRADA COM SUCESSO!")
             except: return 1
-        elif n[1]=="r": ###
+        elif n[1]=="r": #
             clrScreen()
             print("""============
 CADASTRAR RESPONSAVEL
@@ -201,15 +200,16 @@ CADASTRAR RESPONSAVEL
 -> Para cancelar o cadastro e voltar para o menu, digite 'exit'
 -> Para continuar, digite em um unica linha o nome do responsavel:""")
             u=ask_input(":")
-            if u[0].lower()=="exit": return 0
-            l=bdados.busca_nome("responsaveis",u[0],0)
-            if len(l)!=0: return 5
+            try: ####
+                if u[0].lower()=="exit": return -1
+                l=bdados.busca_nome("responsaveis",u[0],0)
+                if l!=None: return 5
+            except Exception as erro:
+                print(erro)
             try:
                 novo_rid=bdados.add_resp(u[0])
                 print(f"-> NOVO RESPONSAVEL [{u[0]}] COM ID [{novo_rid}] CADASTRADO COM SUCESSO!")
-            except Exception as erro: #
-                print(erro)
-                return 1
+            except: return 6
         elif n[1]=="s":
             clrScreen()
             print("""============
@@ -218,19 +218,18 @@ CADASTRAR SETOR
 -> Para cancelar o cadastro e voltar para o menu, digite 'exit'
 -> Para continuar, digite em um unica linha o nome do setor:""")
             u=ask_input(":")
-            if u[0].lower()=="exit": return 0
+            if u[0].lower()=="exit": return -1
             l=bdados.busca_nome("setores",u[0],0)
-            if len(l)!=0: return 5
+            if l!=None: return 5
             try:
                 novo_sid=bdados.add_setor(u[0])
                 print(f"-> NOVO SETOR [{u[0]}] COM ID [{novo_sid}] CADASTRADO COM SUCESSO!")
             except: return 1
         else: return 3
     except (ValueError,TypeError,OverflowError): return 4
-    except (IndexError): return 1
     except: return 1
     return 0
-
+#MISCELLANEOUS DICTIONARIES USED IN SELECT
 flags={
     "v":"vulnerabilidades",
     "r":"responsaveis",
@@ -256,8 +255,13 @@ mods={
     "7a":"SET setor = ?",
     "8a":"SET categoria = ?"
 }
-def select(t,f,id):
-    while True:
+def select(t,f,id): #Selects specific entity by ID and mods/deletes it
+    update_needed=False
+    cmd_inv=False
+    while True: ###
+        if update_needed==True:
+            t=bdados.busca_id(flags[f],id)
+            update_needed=False
         clrScreen()
         vulns=[]
         if f=="a":
@@ -281,10 +285,13 @@ Digite 'del' para deletar esta entidade...
 Digite 'mod' para modificar dados desta entidade...""")
         if f=="a": print("Digite 'vuln' para visualizar a lista de vulnerabilidades...")
         print("============")
+        if cmd_inv==True:
+            print("-> Por favor, digite um comando valido...")
+            cmd_inv=False
         hh=ask_input(" ")
-        if hh[0]=="exit":
+        if hh[0].lower()=="exit":
             return -1
-        elif hh[0]=="del":
+        elif hh[0].lower()=="del":
             deps=bdados.cont_dep(flags[f],id)
             if len(deps)>0:
                 print(f"""============
@@ -307,7 +314,7 @@ Gostaria de deletar mesmo assim? (s/n)""")
                     print("Entidade deletada com sucesso!")
                     break
                 except: print("Nao foi possivel deletar esta entidade...")
-        elif hh[0]=="vuln" and f=="a":
+        elif hh[0].lower()=="vuln" and f=="a":
             clrScreen()
             pags=1
             cont=0
@@ -326,10 +333,10 @@ Exibindo pagina {w+1} de {pags}:
 ------------""")
                         cont+=1
                     except: break
-                print("Digite [ENTER] para prosseguir a proxima pagina ou 'exit' para sair...")
+                print("Pressione [ENTER] para prosseguir a proxima pagina ou digite 'exit' para sair...")
                 resp1=ask_input(" ")
                 if resp1=="exit":break
-        elif hh[0]=="mod":
+        elif hh[0].lower()=="mod":
             clrScreen()
             print(f"""=============
 MODIFICAR UMA ENTIDADE
@@ -346,7 +353,7 @@ MODIFICAR UMA ENTIDADE
 [8] Para modificar a CATEGORIA do [ATIVO]...""")
             while True:
                 k=ask_input(" ")
-                if k[0]=="exit": break
+                if k[0].lower()=="exit": break
                 if int(k[0]) in mods_perm[f]:
                     nov=""
                     if k[0]=="2":
@@ -379,7 +386,7 @@ CLASSIFICACAO DE SEVERIDADE
 ============""")
                         while True:
                             nvsev=ask_input(" ")
-                            if nvsev[0]=="exit":break
+                            if nvsev[0].lower()=="exit":break
                             try:
                                 if int(nvsev[0]) in [0,1,2,3,4]:
                                     nov=int(nvsev[0])
@@ -397,28 +404,22 @@ CLASSIFICACAO DE SEVERIDADE
                     modkey=k[0]+f
                     resp=bdados.atualizar(flags[f],id,mods[modkey],nov)
                     if resp==1: print("-> Nao foi possivel atualizar os dados...")
-                    else: print("""-> Dados atualizados com sucesso!
-============
-Digite 'exit' para voltar ao menu...
-Digite 'del' para deletar esta entidade...
-Digite 'mod' para modificar dados desta entidade...
-============""")
+                    else:
+                        print("-> Dados atualizados com sucesso!")
+                        update_needed=True
+                    print("-> Por favor, pressione [ENTER] para continuar...")
+                    tempresp=ask_input(" ")
                     break
-                else:
-                    print("-> Por favor, digite uma opcao valida...")
-                    time.sleep(3)
-        else: 
-            print("-> Por favor, digite um comando valido...")
-            time.sleep(3)
+                else: print("-> Por favor, digite uma opcao valida...")
+        else: cmd_inv=True
     return 0
-
-def search_bd(n):
+def search_bd(n): #Handles database searches and lists results for selection
     normal=0
     try:
         flag=n[1]
         tp=n[2]
         retorno=[]
-        if tp=="id": # busca por id > select / concluido
+        if tp=="id": #Search by ID
             termo=int(n[3])
             r=bdados.busca_id(flags[flag],termo)
             if r==None:
@@ -426,13 +427,13 @@ def search_bd(n):
             else:
                 ii=select(r,flag,r[0])
                 if ii==-1: normal=-1
-        elif tp=="nm": # busca textual / concluido
+        elif tp=="nm": #Search by name
             termo=n[3]
             retorno=bdados.busca_nome(flags[flag],termo,1)
-        elif tp=="ls": # fetching da lista / concluido
+        elif tp=="ls": #Lists whole table
             retorno=bdados.busca_lista(flags[flag])
         else: return 1
-        if len(retorno)!=0: #exibicao da lista + select / concluido
+        if len(retorno)!=0: #If not empty, start listing
             elemns=len(retorno)
             pags=1
             cont=0
@@ -449,11 +450,11 @@ Exibindo pagina {w+1} de {pags}:
                         cont+=1
                     except: break
                 print("------------")
-                print("""Digite [ENTER] para prosseguir a proxima pagina...
+                print("""Pressione [ENTER] para prosseguir a proxima pagina...
 Digite o ID de uma entidade para ver detalhes...
 Digite 'exit' para sair...""")
                 resp1=ask_input(" ")
-                if resp1[0]=="exit":
+                if resp1[0].lower()=="exit":
                     normal=-1
                     break
                 try:
@@ -469,7 +470,7 @@ Digite 'exit' para sair...""")
                 except: pass  
     except: return 1
     return normal
-
+#COMMAND TO FUNCTION DICTIONARY
 cmds={
     "add":add_to_bd,
     "search":search_bd,
@@ -477,16 +478,17 @@ cmds={
     "help":helper,
     "exit":exitfunc
 }
+#ERROR MESSAGES DICTIONARY
 erros={
     1:"""O comando nao foi digitado corretamente ou faltam argumentos...
 Use o comando 'help [comando] para verificar a sintaxe correta...""",
     2:"O comando que esta tentando verificar nao existe...",
     3:"A flag digitada nao e valida! As flags possiveis sao [r,v,s,a]...",
     4:"O ID digitado nao corresponde a um numero inteiro ou e invalido...",
-    5:"Ja existe uma entidade com este mesmo nome nesta tabela..."
+    5:"Ja existe uma entidade com este mesmo nome nesta tabela...",
+    6:"Nao foi possivel realizar esta operacao nop banco de dados..."
 }
-
-def const_menu():
+def const_menu(): #Menu builder
     clrScreen()
     print(f'''=========================
 IT RISK MANAGER INTERFACE
@@ -504,10 +506,10 @@ Digite 'exit' para finalizar o programa.''')
         if resp>-1:
             if resp>0:
                 print(erros[resp])
-            print("Digite [ENTER] para continuar...")
+            print("Pressione [ENTER] para continuar...")
             temp=ask_input(" ")
     else:
-        print("Nao foi possivel identificar um comando, por favor digite [ENTER] e tente novamente...")
+        print("Nao foi possivel identificar um comando, por favor pressione [ENTER] e tente novamente...")
         temp=ask_input(" ")
 cache_pref(0,0,0) #Updates conf dictionary to saved preferences
 cache_pref(0,1,0)

@@ -1,5 +1,4 @@
 import sqlite3
-
 tipagem_id={
     "responsaveis":"rid",
     "setores":"sid",
@@ -165,8 +164,13 @@ CREATE TABLE IF NOT EXISTS vulnerabilidades (
     def busca_nome(self,tabela,termo,a): #Fetches entries by name
         conexao = self.conectar()
         cursor = conexao.cursor()
-        if a==0: cursor.execute(f"SELECT * FROM {tabela} WHERE {tipagem_nome[tabela]} = ?",({termo},)) #Exact search
-        else: cursor.execute(f"SELECT * FROM {tabela} WHERE {tipagem_nome[tabela]} LIKE ?",(f"%{termo}%",)) #Like search
-        r = cursor.fetchall()
-        conexao.close()
-        return r
+        if a==0:
+            cursor.execute(f"SELECT * FROM {tabela} WHERE {tipagem_nome[tabela]} = ?",(termo,)) #Exact search
+            r = cursor.fetchone()
+            conexao.close()
+            return r
+        else:
+            cursor.execute(f"SELECT * FROM {tabela} WHERE {tipagem_nome[tabela]} LIKE ?",(f"%{termo}%",)) #Like search
+            r = cursor.fetchall()
+            conexao.close()
+            return r
